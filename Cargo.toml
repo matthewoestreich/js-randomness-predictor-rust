@@ -9,4 +9,9 @@ z3 = "0.12.1"
 
 [[bin]]
 name = "js-randomness-predictor-rust"
-path = "main.rs"
+path = "bin/main.rs"
+
+[lib]
+name = "js_randomness_predictor"
+path = "src/lib.rs"
+crate-type = ["cdylib", "rlib"]

@@ -1,6 +1,4 @@
-mod v8predictor;
-
-use v8predictor::*;
+use js_randomness_predictor::V8Predictor;
 use z3;
 
 fn main() {
