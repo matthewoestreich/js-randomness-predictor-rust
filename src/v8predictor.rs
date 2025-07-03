@@ -1,3 +1,4 @@
+use crate::errors::InitError;
 use z3::ast::*;
 use z3::{self, Context, SatResult, Solver};
 
@@ -43,15 +44,15 @@ impl<'a> V8Predictor<'a> {
         return &self.original_sequence;
     }
 
-    pub fn predict_next(&mut self) -> f64 {
-        self.initialize();
+    pub fn predict_next(&mut self) -> Result<f64, InitError> {
+        self.initialize()?; // if initialize fails, error is returned early
         let v = self.xor_shift_128_plus_concrete();
-        return self.to_double(v);
+        Ok(self.to_double(v))
     }
 
-    fn initialize(&mut self) {
+    fn initialize(&mut self) -> Result<(), InitError> {
         if self.is_initialized {
-            return;
+            return Ok(());
         }
 
         for observed in self.internal_sequence.clone() {
@@ -60,26 +61,29 @@ impl<'a> V8Predictor<'a> {
         }
 
         if self.solver.check() != SatResult::Sat {
-            panic!("UNSAT");
+            return Err(InitError::Unsat);
         }
 
-        let model = self.solver.get_model().expect("Failed to get model");
+        let model = self.solver.get_model().ok_or(InitError::MissingModel)?;
+
         self.conc_state_0 = model
             .eval(&self.sym_state_0, true)
-            .expect("Failed to eval sym_state_0")
+            .ok_or(InitError::EvalFailed("sym_state_0"))?
             .as_u64()
-            .expect("failed to convert sym_state_0 to u64");
+            .ok_or(InitError::ConvertFailed("sym_state_0"))?;
+
         self.conc_state_1 = model
             .eval(&self.sym_state_1, true)
-            .expect("Failled to eval sym_state_1")
+            .ok_or(InitError::EvalFailed("sym_state_1"))?
             .as_u64()
-            .expect("Failed to convert sym_state_1 to u64");
+            .ok_or(InitError::ConvertFailed("sym_state_1"))?;
 
         for _ in self.internal_sequence.clone() {
             self.xor_shift_128_plus_concrete();
         }
 
         self.is_initialized = true;
+        return Ok(());
     }
 
     fn recover_mantissa_and_add_to_solver(&mut self, value: f64) {

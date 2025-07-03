@@ -23,20 +23,28 @@ fn main() {
 
     let mut v8p_node_v24 = V8Predictor::new(ctx, 24, node_v24_seq);
 
-    let mut v8_node_v24_predictions = vec![]; 
+    let mut v8_node_v24_predictions = vec![];
     for _ in 0..node_v24_expected.len() {
-        v8_node_v24_predictions.push(v8p_node_v24.predict_next());
+        match v8p_node_v24.predict_next() {
+            Ok(prediction) => v8_node_v24_predictions.push(prediction),
+            Err(e) => {
+                eprintln!("Initialization issue: {:?}", e);
+                return;
+            }
+        }
     }
 
     let mut is_correct = true;
     for i in 0..v8_node_v24_predictions.len() {
         if v8_node_v24_predictions[i] != node_v24_expected[i] {
-            println!("expect prediction '{}' to equal '{}'", v8_node_v24_predictions[i], node_v24_expected[i]);
+            println!(
+                "expect prediction '{}' to equal '{}'",
+                v8_node_v24_predictions[i], node_v24_expected[i]
+            );
             is_correct = false;
             break;
         }
     }
 
     println!("{}", is_correct);
-
 }
