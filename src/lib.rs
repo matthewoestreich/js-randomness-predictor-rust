@@ -1,4 +1,4 @@
-pub mod v8predictor;
-pub use v8predictor::V8Predictor;
+pub mod v8_predictor;
+pub use v8_predictor::V8Predictor;
 
-mod errors;
+pub mod errors;
