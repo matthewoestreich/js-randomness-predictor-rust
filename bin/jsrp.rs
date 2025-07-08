@@ -141,7 +141,7 @@ fn main() -> Result<(), Box<dyn Error>> {
       let SharedArgs {
         predictions,
         sequence,
-        export,
+        export: _export,
       } = node_args.shared_args;
       let major_ver = node_args.major_version as i32;
       let mut node = NodePredictor::new(major_ver, sequence.clone());
