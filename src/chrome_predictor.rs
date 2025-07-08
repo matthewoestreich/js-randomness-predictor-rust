@@ -1,28 +1,26 @@
 use crate::errors::InitError;
 use z3::{self, Config, Context, SatResult, Solver, ast::*};
 
-pub struct V8Predictor {
+pub struct ChromePredictor {
   sequence: Vec<f64>,
   internal_sequence: Vec<f64>,
   is_solved: bool,
-  node_js_major_version: i32,
   conc_state_0: u64,
   conc_state_1: u64,
 }
 
-impl V8Predictor {
+impl ChromePredictor {
   const SS_0_STR: &str = "sym_state_0";
   const SS_1_STR: &str = "sym_state_1";
 
-  pub fn new(node_js_major_version: i32, seq: Vec<f64>) -> Self {
+  pub fn new(seq: Vec<f64>) -> Self {
     let mut iseq = seq.clone();
     iseq.reverse();
 
-    V8Predictor {
+    ChromePredictor {
       internal_sequence: iseq,
       sequence: seq,
       is_solved: false,
-      node_js_major_version,
       conc_state_0: 0,
       conc_state_1: 0,
     }
@@ -39,7 +37,7 @@ impl V8Predictor {
     Ok(self.to_double(v))
   }
 
-  // Performs XORShift in reverse
+  // Performs XORShift in reverse.
   fn xor_shift_128_plus_concrete(&mut self) -> u64 {
     let result = self.conc_state_0;
     let temp1 = self.conc_state_0;
@@ -53,10 +51,7 @@ impl V8Predictor {
   }
 
   fn to_double(&self, value: u64) -> f64 {
-    if self.node_js_major_version >= 24 {
-      return (value >> 11) as f64 / (1u64 << 53) as f64;
-    }
-    return f64::from_bits((value >> 12) | 0x3FF0000000000000) - 1.0;
+    return (value >> 11) as f64 / (1u64 << 53) as f64;
   }
 
   fn solve_symbolic_state(&mut self) -> Result<(), InitError> {
@@ -73,13 +68,7 @@ impl V8Predictor {
 
     for &observed in &self.internal_sequence {
       Self::xor_shift_128_plus_symbolic(&context, &mut sym_state_0, &mut sym_state_1);
-      Self::constrain_mantissa(
-        observed,
-        self.node_js_major_version,
-        &context,
-        &solver,
-        &sym_state_0,
-      );
+      Self::constrain_mantissa(observed, &context, &solver, &sym_state_0);
     }
 
     if solver.check() != SatResult::Sat {
@@ -127,99 +116,67 @@ impl V8Predictor {
   }
 
   // Static 'helper' method
-  fn constrain_mantissa(
-    value: f64,
-    nodejs_version: i32,
-    context: &Context,
-    solver: &Solver,
-    state_0: &BV,
-  ) {
-    if nodejs_version >= 24 {
-      // Recover mantissa
-      let mantissa = (value * (1u64 << 53) as f64) as u64;
-      // Add mantissa constraint
-      solver.assert(
-        &state_0
-          .bvlshr(&BV::from_u64(context, 11, 64))
-          ._eq(&BV::from_u64(context, mantissa, 64)),
-      );
-    } else {
-      // Recover mantissa
-      let mantissa = f64::to_bits(value + 1.0) & ((1u64 << 52) - 1);
-      // Add mantissa constraint
-      solver.assert(
-        &BV::from_u64(context, mantissa, 64)._eq(&state_0.bvlshr(&BV::from_u64(context, 12, 64))),
-      );
-    }
+  fn constrain_mantissa(value: f64, context: &Context, solver: &Solver, state_0: &BV) {
+    // Recover mantissa
+    let mantissa = (value * (1u64 << 53) as f64) as u64;
+    // Add mantissa constraint
+    solver.assert(
+      &state_0
+        .bvlshr(&BV::from_u64(context, 11, 64))
+        ._eq(&BV::from_u64(context, mantissa, 64)),
+    );
   }
 }
 
 #[cfg(test)]
 mod tests {
-  mod node_v22 {
-    use std::error::Error;
+  use std::error::Error;
+  #[test]
+  fn correctly_predicts_sequence() -> Result<(), Box<dyn Error>> {
+    let sequence = vec![
+      0.32096095967729477,
+      0.3940071672626849,
+      0.3363374923027722,
+      0.7518761096243554,
+      0.44201420586496387,
+    ];
+    let expected = vec![
+      0.8199006769436774,
+      0.6250240806313154,
+      0.9101975676132608,
+      0.5889203398264599,
+      0.5571161440436232,
+      0.9619184649129092,
+      0.8385620929536599,
+      0.3822042053588621,
+      0.5040552869863579,
+      0.12014019399083042,
+      0.44332968383610927,
+      0.37830079319230936,
+      0.542449069899975,
+      0.0659240460476268,
+      0.9589494984837686,
+      0.007621633090565627,
+      0.14119301022498787,
+      0.9964718645470699,
+      0.14527130036353442,
+      0.6260597083849548,
+      0.86354903522581,
+      0.7245123107811886,
+      0.6565323828155891,
+      0.3636039851663503,
+      0.5799453712253447,
+    ];
 
-    #[test]
-    fn correctly_predicts_sequence() -> Result<(), Box<dyn Error>> {
-      let node_v22_seq = vec![
-        0.36280726230126614,
-        0.32726837947512855,
-        0.22834780314989023,
-        0.18295517908119385,
-      ];
-      let node_v22_expected = vec![
-        0.8853110028441145,
-        0.14326940888839124,
-        0.035607792006009165,
-        0.6491231376351401,
-        0.3345277284146617,
-        0.42618019812863417,
-      ];
+    let mut cp = crate::ChromePredictor::new(sequence);
+    let mut predictions = vec![];
 
-      let mut v8p_node_v22 = crate::V8Predictor::new(22, node_v22_seq);
-
-      let mut v8_node_v22_predictions = vec![];
-      for _ in 0..node_v22_expected.len() {
-        let prediction = v8p_node_v22.predict_next()?;
-        v8_node_v22_predictions.push(prediction);
-      }
-
-      assert_eq!(v8_node_v22_predictions, node_v22_expected);
-      return Ok(());
+    for _ in 0..expected.len() {
+      let prediction = cp.predict_next()?;
+      predictions.push(prediction);
     }
-  }
 
-  mod node_v24 {
-    use std::error::Error;
-
-    #[test]
-    fn correctly_predicts_sequence() -> Result<(), Box<dyn Error>> {
-      let node_v24_seq = vec![
-        0.01800425609760259,
-        0.19267361208155598,
-        0.9892770985784053,
-        0.49553307275603264,
-        0.7362624704291061,
-      ];
-      let node_v24_expected = vec![
-        0.8664993194151147,
-        0.5549329443482626,
-        0.8879559862322086,
-        0.9570142746667122,
-        0.7514661363382521,
-        0.9348208735728415,
-      ];
-
-      let mut v8p_node_v24 = crate::V8Predictor::new(24, node_v24_seq);
-
-      let mut v8_node_v24_predictions = vec![];
-      for _ in 0..node_v24_expected.len() {
-        let prediction = v8p_node_v24.predict_next()?;
-        v8_node_v24_predictions.push(prediction)
-      }
-
-      assert_eq!(v8_node_v24_predictions, node_v24_expected);
-      return Ok(());
-    }
+    assert_eq!(predictions, expected);
+    return Ok(());
   }
 }
