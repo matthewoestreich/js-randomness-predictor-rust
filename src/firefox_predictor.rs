@@ -54,8 +54,8 @@ impl FirefoxPredictor {
     let context = Context::new(&config);
     let solver = Solver::new(&context);
 
-    let mut sym_state_0 = z3::ast::BV::new_const(&context, Self::SS_0_STR, 64);
-    let mut sym_state_1 = z3::ast::BV::new_const(&context, Self::SS_1_STR, 64);
+    let mut sym_state_0 = BV::new_const(&context, Self::SS_0_STR, 64);
+    let mut sym_state_1 = BV::new_const(&context, Self::SS_1_STR, 64);
 
     for &observed in &self.sequence {
       Self::xor_shift_128_plus_symbolic(&context, &mut sym_state_0, &mut sym_state_1);

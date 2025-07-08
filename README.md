@@ -1,58 +1,61 @@
-# js-randomness-predictor
+<h1 align="center">jsrp</h1>
+<p align="center">
+<small>A <b><u>J</u></b>ava<b><u>S</u></b>cript <b><u>R</u></b>andomness <b><u>P</u></b>redictor</small>
 
-Predict JS Math.random output for Node/V8, Chrome, and Firefox in Rust.
+<p align="center">
+  <a href="https://crates.io/crates/jsrp">
+    <img src="https://img.shields.io/crates/v/jsrp" alt="crates.io" />
+  </a>
+</p>
 
-- [C++ Version](https://github.com/matthewoestreich/js-randomness-predictor-cpp) (can be used in Node.js)
-- [TypeScript Version](https://github.com/matthewoestreich/js-randomness-predictor) (can be used in Node.js)
+<p align="center">Predict JS Math.random output in Node, Chrome, and Firefox with Rust!<br/>You can use this package programmatically, or via CLI.</p>
 
-# Examples
+---
 
-Node/V8 example for predicting nubmers generated in Node.js `v24.2.0`
+# Installation
+
+**To use programmatically**
+
+```bash
+cargo add jsrp
+```
+
+**To use CLI**
+
+This installs `jsrp` globally! You will be able to use the `jsrp` command system wide.
+
+```bash
+cargo install jsrp
+```
+
+# Usage
+
+**Firefox**
 
 ```rust
-let cfg = &z3::Config::new();
-let ctx = &z3::Context::new(cfg);
+// todo
+```
 
-let node_v24_seq = vec![
-    0.01800425609760259,
-    0.19267361208155598,
-    0.9892770985784053,
-    0.49553307275603264,
-    0.7362624704291061,
-];
-let node_v24_expected = vec![
-    0.8664993194151147,
-    0.5549329443482626,
-    0.8879559862322086,
-    0.9570142746667122,
-    0.7514661363382521,
-    0.9348208735728415,
-];
+**Chrome**
 
-let mut v8p_node_v24 = V8Predictor::new(ctx, 24, node_v24_seq);
+```rust
+// todo
+```
 
-let mut v8_node_v24_predictions = vec![];
-for _ in 0..node_v24_expected.len() {
-    match v8p_node_v24.predict_next() {
-        Ok(prediction) => v8_node_v24_predictions.push(prediction),
-        Err(e) => {
-            eprintln!("Initialization issue: {:?}", e);
-            return;
-        }
-    }
-}
+**Node**
 
-let mut is_correct = true;
-for i in 0..v8_node_v24_predictions.len() {
-    if v8_node_v24_predictions[i] != node_v24_expected[i] {
-        println!(
-            "expect prediction '{}' to equal '{}'",
-            v8_node_v24_predictions[i], node_v24_expected[i]
-        );
-        is_correct = false;
-        break;
-    }
-}
+```rust
+// todo
+```
 
-println!("{}", is_correct);
+**Safari**
+
+```rust
+//todo
+```
+
+# CLI
+
+```bash
+# todo
 ```
