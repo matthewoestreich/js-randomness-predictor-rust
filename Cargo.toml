@@ -8,7 +8,7 @@ description = "A Rust library for predicting JavaScript `Math.random()` output f
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/matthewoestreich/js-randomness-predictor-rust"
 readme = "README.md"
-keywords = ["predictor", "randomness", "z3", "node", "v8", "firefox", "chrome", "safari", "predict javascript randomness", "javascript", "smt"]
+keywords = ["predictor", "randomness", "z3", "javascript", "js"]
 categories = ["command-line-utilities", "science"]
 
 [dependencies]
