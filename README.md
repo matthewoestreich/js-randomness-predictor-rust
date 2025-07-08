@@ -8,7 +8,7 @@
   </a>
 </p>
 
-<p align="center">Predict JS Math.random output in Node, Chrome, and Firefox with Rust!<br/>You can use this package programmatically, or via CLI.</p>
+<p align="center">Predict JS Math.random output in Node, Chrome, Firefox, and Safari with Rust!<br/>You can use this package programmatically, or via CLI.</p>
 
 ---
 
