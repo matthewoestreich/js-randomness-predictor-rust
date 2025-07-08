@@ -13,7 +13,6 @@ struct Cli {
 #[clap(rename_all = "lower")]
 enum Environments {
   /// Node.js
-  #[group()]
   Node(NodeArgs),
   /// Firefox
   Firefox(SharedArgs),
