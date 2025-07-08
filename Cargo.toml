@@ -1,6 +1,6 @@
 [package]
-name = "js-randomness-predictor-rust"
-include = ["Cargo.toml", "src/**/*"]
+name = "jsrp"
+include = ["Cargo.toml", "src/**/*", "bin/**/*"]
 version = "0.1.0"
 edition = "2024"
 authors = ["Matt Oestreich"]
