@@ -39,7 +39,7 @@ let mut ffp = FirefoxPredictor::new(vec![/*
  using Math.random in Firefox.
 */]);
 
-let next = ffp.predict_next();
+let next = ffp.predict_next()?;
 // Run another Math.random() in
 // Firefox to validate `next`.
 ```
@@ -53,7 +53,7 @@ let mut chrp = ChromePredictor::new(vec![/*
  using Math.random in Chrome.
 */]);
 
-let next = chrp.predict_next();
+let next = chrp.predict_next()?;
 // Run another Math.random() in
 // Chrome to validate `next`.
 ```
@@ -82,7 +82,7 @@ let mut n_v24_p = NodePredictor::new(
     */],
 );
 
-let next = n_v24_p.predict_next();
+let next = n_v24_p.predict_next()?;
 // Run another Math.random() in
 // Node.js to validate `next`.
 ```
@@ -104,7 +104,7 @@ let mut n_vX_p = NodePredictor::new(
     */],
 );
 
-let next = n_vX_p.predict_next();
+let next = n_vX_p.predict_next()?;
 // Run another Math.random() in
 // Node.js to validate `next`.
 ```
@@ -118,7 +118,7 @@ let mut sp = SafariPredictor::new(vec![/*
  using Math.random in Safari.
 */]);
 
-let next = sp.predict_next();
+let next = sp.predict_next()?;
 // Run another Math.random() in
 // Safari to validate `next`.
 ```

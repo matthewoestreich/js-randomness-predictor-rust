@@ -1,4 +1,4 @@
-use crate::errors::InitError;
+use crate::{Predictor, errors::InitError};
 use z3::{self, Config, Context, SatResult, Solver, ast::*};
 
 pub struct SafariPredictor {
@@ -8,28 +8,30 @@ pub struct SafariPredictor {
   conc_state_1: u64,
 }
 
+impl Predictor for SafariPredictor {
+  fn predict_next(&mut self) -> Result<f64, InitError> {
+    self.solve_symbolic_state()?; // if solving fails, error is returned early
+    let v = self.xor_shift_128_plus_concrete();
+    return Ok(self.to_double(v));
+  }
+}
+
 impl SafariPredictor {
   const SS_0_STR: &str = "sym_state_0";
   const SS_1_STR: &str = "sym_state_1";
 
   pub fn new(seq: Vec<f64>) -> Self {
-    SafariPredictor {
+    return SafariPredictor {
       sequence: seq,
       is_solved: false,
       conc_state_0: 0,
       conc_state_1: 0,
-    }
+    };
   }
 
   #[allow(dead_code)]
   pub fn sequence(&self) -> &[f64] {
     return &self.sequence;
-  }
-
-  pub fn predict_next(&mut self) -> Result<f64, InitError> {
-    self.solve_symbolic_state()?; // if solving fails, error is returned early
-    let v = self.xor_shift_128_plus_concrete();
-    Ok(self.to_double(v))
   }
 
   fn xor_shift_128_plus_concrete(&mut self) -> u64 {
@@ -94,9 +96,9 @@ impl SafariPredictor {
     let mut s1 = &*state_0 ^ state_0_shifted_left;
     let s1_shifted_right = s1.bvlshr(&BV::from_u64(context, 17, 64));
 
-    s1 = s1 ^ s1_shifted_right;
-    s1 = s1 ^ state_1.clone();
-    s1 = s1 ^ state_1.bvlshr(&BV::from_u64(context, 26, 64));
+    s1 ^= s1_shifted_right;
+    s1 ^= state_1.clone();
+    s1 ^= state_1.bvlshr(&BV::from_u64(context, 26, 64));
     std::mem::swap(state_0, state_1);
     *state_1 = s1;
   }
@@ -120,6 +122,8 @@ impl SafariPredictor {
 #[cfg(test)]
 mod tests {
   use std::error::Error;
+
+  use crate::Predictor;
 
   #[test]
   fn correctly_predicts_sequence() -> Result<(), Box<dyn Error>> {

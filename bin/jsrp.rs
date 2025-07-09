@@ -1,3 +1,6 @@
+#![allow(clippy::needless_return)]
+#![warn(clippy::implicit_return)]
+
 use clap::{Args, Parser, Subcommand};
 use js_randomness_predictor::*;
 use serde::Serialize;
@@ -56,11 +59,9 @@ struct ExportPath {
 
 fn parse_strict_float(s: &str) -> Result<f64, String> {
   if s.contains('.') {
-    s.parse::<f64>()
-      .map_err(|e| format!("Invalid float: {}", e))
-  } else {
-    Err(format!("Expected a float with decimal point, got '{}'", s))
+    return s.parse::<f64>().map_err(|e| format!("Invalid float: {e}"));
   }
+  return Err(format!("Expected a float with decimal point, got '{s}'"));
 }
 
 fn parse_export_path(s: &str) -> Result<ExportPath, String> {
@@ -68,7 +69,7 @@ fn parse_export_path(s: &str) -> Result<ExportPath, String> {
   if let Some(extension) = p.extension() {
     if extension != "json" {
       #[rustfmt::skip]
-      let e = format!("Expected 'export <path>' to point to a .json file, but got '{:?}'", extension);
+      let e = format!("Expected 'export <path>' to point to a .json file, but got '{extension:?}'");
       return Err(e);
     }
     if p.is_absolute() || s.contains("/") {
@@ -85,7 +86,34 @@ struct PredictionResult<'a> {
   predictions: Vec<f64>,
 }
 
-// TODO: clean this up!
+fn run_predictor_and_maybe_export_predictions<P: Predictor>(
+  mut predictor: P,
+  environment: String,
+  sequence: Vec<f64>,
+  predictions: usize,
+  export_path: Option<ExportPath>,
+) -> Result<(), Box<dyn Error>> {
+  let mut pred_res = PredictionResult {
+    environment: &environment,
+    sequence,
+    predictions: vec![],
+  };
+
+  for _ in 0..predictions {
+    let pred = predictor.predict_next()?;
+    pred_res.predictions.push(pred);
+  }
+
+  let formatted = to_string_pretty(&pred_res)?;
+  println!("{formatted}");
+
+  if let Some(export) = export_path {
+    fs::write(export.path, formatted)?;
+  }
+
+  return Ok(());
+}
+
 fn main() -> Result<(), Box<dyn Error>> {
   let cli = Cli::parse();
   match cli.environments {
@@ -93,77 +121,44 @@ fn main() -> Result<(), Box<dyn Error>> {
       #[rustfmt::skip]
       let SharedArgs { predictions, sequence, export } = node_args.shared_args;
       let major_ver = node_args.major_version;
-      let mut node = NodePredictor::new(major_ver, sequence.clone());
-      let mut pred_res = PredictionResult {
-        environment: &format!("Node.js {}", major_ver),
-        sequence: vec![],
-        predictions: vec![],
-      };
-      pred_res.sequence = sequence;
-      for _ in 0..predictions {
-        let pred = node.predict_next()?;
-        pred_res.predictions.push(pred);
-      }
-      let formatted = format!("{}", to_string_pretty(&pred_res)?);
-      println!("{formatted}");
-      if let Some(exportp) = export {
-        fs::write(exportp.path, formatted)?;
-      }
-      return Ok(());
+      let predictor = NodePredictor::new(major_ver, sequence.clone());
+      return run_predictor_and_maybe_export_predictions(
+        predictor,
+        format!("Node.js {major_ver}"),
+        sequence,
+        predictions,
+        export,
+      );
     }
     Environments::Firefox(args) => {
-      let mut predictor = FirefoxPredictor::new(args.sequence.clone());
-      let mut pred_res = PredictionResult {
-        environment: "Firefox",
-        sequence: args.sequence,
-        predictions: vec![],
-      };
-      for _ in 0..args.predictions {
-        let pred = predictor.predict_next()?;
-        pred_res.predictions.push(pred);
-      }
-      let formatted = format!("{}", to_string_pretty(&pred_res)?);
-      println!("{formatted}");
-      if let Some(export) = args.export {
-        fs::write(export.path, formatted)?;
-      }
-      return Ok(());
+      let predictor = FirefoxPredictor::new(args.sequence.clone());
+      return run_predictor_and_maybe_export_predictions(
+        predictor,
+        String::from("Firefox"),
+        args.sequence,
+        args.predictions,
+        args.export,
+      );
     }
     Environments::Chrome(args) => {
-      let mut predictor = ChromePredictor::new(args.sequence.clone());
-      let mut pred_res = PredictionResult {
-        environment: "Chrome",
-        sequence: args.sequence,
-        predictions: vec![],
-      };
-      for _ in 0..args.predictions {
-        let pred = predictor.predict_next()?;
-        pred_res.predictions.push(pred);
-      }
-      let formatted = format!("{}", to_string_pretty(&pred_res)?);
-      println!("{formatted}");
-      if let Some(export) = args.export {
-        fs::write(export.path, formatted)?;
-      }
-      return Ok(());
+      let predictor = ChromePredictor::new(args.sequence.clone());
+      return run_predictor_and_maybe_export_predictions(
+        predictor,
+        String::from("Chrome"),
+        args.sequence,
+        args.predictions,
+        args.export,
+      );
     }
     Environments::Safari(args) => {
-      let mut predictor = SafariPredictor::new(args.sequence.clone());
-      let mut pred_res = PredictionResult {
-        environment: "Safari",
-        sequence: args.sequence,
-        predictions: vec![],
-      };
-      for _ in 0..args.predictions {
-        let pred = predictor.predict_next()?;
-        pred_res.predictions.push(pred);
-      }
-      let formatted = format!("{}", to_string_pretty(&pred_res)?);
-      println!("{formatted}");
-      if let Some(export) = args.export {
-        fs::write(export.path, formatted)?;
-      }
-      return Ok(());
+      let predictor = SafariPredictor::new(args.sequence.clone());
+      return run_predictor_and_maybe_export_predictions(
+        predictor,
+        String::from("Safari"),
+        args.sequence,
+        args.predictions,
+        args.export,
+      );
     }
   }
 }

@@ -28,7 +28,7 @@ pub enum NodeJsMajorVersion {
 }
 
 impl NodeJsMajorVersion {
-  #[allow(dead_code)]
+  #[allow(dead_code, clippy::implicit_return)]
   pub fn from_u8(value: u8) -> Option<Self> {
     match value {
       0 => Some(Self::V0),
@@ -60,6 +60,6 @@ impl NodeJsMajorVersion {
 
 impl Display for NodeJsMajorVersion {
   fn fmt(&self, f: &mut Formatter<'_>) -> Result {
-    write!(f, "v{}", *self as u8)
+    return write!(f, "v{}", *self as u8);
   }
 }

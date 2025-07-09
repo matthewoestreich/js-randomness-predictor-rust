@@ -1,4 +1,4 @@
-use crate::errors::InitError;
+use crate::{Predictor, errors::InitError};
 use z3::{self, Config, Context, SatResult, Solver, ast::*};
 
 pub struct ChromePredictor {
@@ -9,6 +9,14 @@ pub struct ChromePredictor {
   conc_state_1: u64,
 }
 
+impl Predictor for ChromePredictor {
+  fn predict_next(&mut self) -> Result<f64, InitError> {
+    self.solve_symbolic_state()?; // if solving fails, error is returned early
+    let v = self.xor_shift_128_plus_concrete();
+    return Ok(self.to_double(v));
+  }
+}
+
 impl ChromePredictor {
   const SS_0_STR: &str = "sym_state_0";
   const SS_1_STR: &str = "sym_state_1";
@@ -17,13 +25,13 @@ impl ChromePredictor {
     let mut iseq = seq.clone();
     iseq.reverse();
 
-    ChromePredictor {
+    return ChromePredictor {
       internal_sequence: iseq,
       sequence: seq,
       is_solved: false,
       conc_state_0: 0,
       conc_state_1: 0,
-    }
+    };
   }
 
   #[allow(dead_code)]
@@ -31,20 +39,14 @@ impl ChromePredictor {
     return &self.sequence;
   }
 
-  pub fn predict_next(&mut self) -> Result<f64, InitError> {
-    self.solve_symbolic_state()?; // if solving fails, error is returned early
-    let v = self.xor_shift_128_plus_concrete();
-    Ok(self.to_double(v))
-  }
-
   // Performs XORShift in reverse.
   fn xor_shift_128_plus_concrete(&mut self) -> u64 {
     let result = self.conc_state_0;
     let temp1 = self.conc_state_0;
     let mut temp0 = self.conc_state_1 ^ (self.conc_state_0 >> 26);
-    temp0 = temp0 ^ self.conc_state_0;
-    temp0 = temp0 ^ (temp0 >> 17) ^ (temp0 >> 34) ^ (temp0 >> 51);
-    temp0 = temp0 ^ (temp0 << 23) ^ (temp0 << 46);
+    temp0 ^= self.conc_state_0;
+    temp0 ^= (temp0 >> 17) ^ (temp0 >> 34) ^ (temp0 >> 51);
+    temp0 ^= (temp0 << 23) ^ (temp0 << 46);
     self.conc_state_0 = temp0;
     self.conc_state_1 = temp1;
     return result;
@@ -107,9 +109,9 @@ impl ChromePredictor {
     let mut s1 = &*state_0 ^ state_0_shifted_left;
     let s1_shifted_right = s1.bvlshr(&BV::from_u64(context, 17, 64));
 
-    s1 = s1 ^ s1_shifted_right;
-    s1 = s1 ^ state_1.clone();
-    s1 = s1 ^ state_1.bvlshr(&BV::from_u64(context, 26, 64));
+    s1 ^= s1_shifted_right;
+    s1 ^= state_1.clone();
+    s1 ^= state_1.bvlshr(&BV::from_u64(context, 26, 64));
 
     std::mem::swap(state_0, state_1);
     *state_1 = s1;
@@ -131,6 +133,8 @@ impl ChromePredictor {
 #[cfg(test)]
 mod tests {
   use std::error::Error;
+
+  use crate::Predictor;
   #[test]
   fn correctly_predicts_sequence() -> Result<(), Box<dyn Error>> {
     let sequence = vec![

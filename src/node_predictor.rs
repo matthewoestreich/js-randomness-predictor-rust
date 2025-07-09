@@ -1,4 +1,4 @@
-use crate::{NodeJsMajorVersion, errors::InitError};
+use crate::{NodeJsMajorVersion, Predictor, errors::InitError};
 use z3::{Config, Context, SatResult, Solver, ast::*};
 
 pub struct NodePredictor {
@@ -10,6 +10,14 @@ pub struct NodePredictor {
   conc_state_1: u64,
 }
 
+impl Predictor for NodePredictor {
+  fn predict_next(&mut self) -> Result<f64, InitError> {
+    self.solve_symbolic_state()?; // if solving fails, error is returned early
+    let v = self.xor_shift_128_plus_concrete();
+    return Ok(self.to_double(v));
+  }
+}
+
 impl NodePredictor {
   const SS_0_STR: &str = "sym_state_0";
   const SS_1_STR: &str = "sym_state_1";
@@ -18,14 +26,14 @@ impl NodePredictor {
     let mut iseq = seq.clone();
     iseq.reverse();
 
-    NodePredictor {
+    return NodePredictor {
       internal_sequence: iseq,
       sequence: seq,
       is_solved: false,
       node_js_major_version,
       conc_state_0: 0,
       conc_state_1: 0,
-    }
+    };
   }
 
   #[allow(dead_code)]
@@ -33,21 +41,15 @@ impl NodePredictor {
     return &self.sequence;
   }
 
-  pub fn predict_next(&mut self) -> Result<f64, InitError> {
-    self.solve_symbolic_state()?; // if solving fails, error is returned early
-    let v = self.xor_shift_128_plus_concrete();
-    Ok(self.to_double(v))
-  }
-
   fn xor_shift_128_plus_concrete(&mut self) -> u64 {
     let result = self.conc_state_0;
-    let temp1 = self.conc_state_0;
-    let mut temp0 = self.conc_state_1 ^ (self.conc_state_0 >> 26);
-    temp0 = temp0 ^ self.conc_state_0;
-    temp0 = temp0 ^ (temp0 >> 17) ^ (temp0 >> 34) ^ (temp0 >> 51);
-    temp0 = temp0 ^ (temp0 << 23) ^ (temp0 << 46);
-    self.conc_state_0 = temp0;
-    self.conc_state_1 = temp1;
+    let t1 = self.conc_state_0;
+    let mut t0 = self.conc_state_1 ^ (self.conc_state_0 >> 26);
+    t0 ^= self.conc_state_0;
+    t0 ^= (t0 >> 17) ^ (t0 >> 34) ^ (t0 >> 51);
+    t0 ^= (t0 << 23) ^ (t0 << 46);
+    self.conc_state_0 = t0;
+    self.conc_state_1 = t1;
     return result;
   }
 
@@ -117,9 +119,9 @@ impl NodePredictor {
     let mut s1 = &*state_0 ^ state_0_shifted_left;
     let s1_shifted_right = s1.bvlshr(&BV::from_u64(context, 17, 64));
 
-    s1 = s1 ^ s1_shifted_right;
-    s1 = s1 ^ state_1.clone();
-    s1 = s1 ^ state_1.bvlshr(&BV::from_u64(context, 26, 64));
+    s1 ^= s1_shifted_right;
+    s1 ^= state_1.clone();
+    s1 ^= state_1.bvlshr(&BV::from_u64(context, 26, 64));
 
     std::mem::swap(state_0, state_1);
     *state_1 = s1;
@@ -158,6 +160,8 @@ mod tests {
   mod node_v22 {
     use std::error::Error;
 
+    use crate::Predictor;
+
     #[test]
     fn correctly_predicts_sequence() -> Result<(), Box<dyn Error>> {
       let node_v22_seq = vec![
@@ -191,6 +195,8 @@ mod tests {
 
   mod node_v24 {
     use std::error::Error;
+
+    use crate::Predictor;
 
     #[test]
     fn correctly_predicts_sequence() -> Result<(), Box<dyn Error>> {
