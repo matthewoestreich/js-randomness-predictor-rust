@@ -7,6 +7,9 @@ cargo fmt
 # Allow for `println!` to show in tests
 cargo test -- --nocapture
 
+# Target specific test
+cargo test --package jsrp --lib -- node_predictor::tests::general_tests
+
 
 ###########################
 # For testing the CLI

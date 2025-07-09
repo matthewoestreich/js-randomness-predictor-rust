@@ -1,5 +1,5 @@
-use crate::errors::InitError;
+use std::error::Error;
 
 pub trait Predictor {
-  fn predict_next(&mut self) -> Result<f64, InitError>;
+  fn predict_next(&mut self) -> Result<f64, Box<dyn Error>>;
 }

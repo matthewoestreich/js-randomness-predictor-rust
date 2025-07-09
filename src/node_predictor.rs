@@ -1,4 +1,8 @@
-use crate::{NodeJsMajorVersion, Predictor, errors::InitError};
+use crate::{NodeJsMajorVersion, Predictor, errors::*};
+use std::{
+  error::Error,
+  sync::{Arc, Mutex},
+};
 use z3::{Config, Context, SatResult, Solver, ast::*};
 
 pub struct NodePredictor {
@@ -8,37 +12,48 @@ pub struct NodePredictor {
   node_js_major_version: NodeJsMajorVersion,
   conc_state_0: u64,
   conc_state_1: u64,
+  num_predictions_made: Arc<Mutex<u8>>,
 }
 
 impl Predictor for NodePredictor {
-  fn predict_next(&mut self) -> Result<f64, InitError> {
-    self.solve_symbolic_state()?; // if solving fails, error is returned early
+  fn predict_next(&mut self) -> Result<f64, Box<dyn Error>> {
+    self.increment_prediction_count()?;
+    self.solve_symbolic_state()?;
     let v = self.xor_shift_128_plus_concrete();
-    return Ok(self.to_double(v));
+    let p = self.to_double(v);
+    return Ok(p);
   }
 }
 
 impl NodePredictor {
   const SS_0_STR: &str = "sym_state_0";
   const SS_1_STR: &str = "sym_state_1";
+  const MAX_NUM_PREDICTIONS: u8 = 64;
 
   pub fn new(node_js_major_version: NodeJsMajorVersion, seq: Vec<f64>) -> Self {
+    let len = seq.len() as u8;
     let mut iseq = seq.clone();
     iseq.reverse();
 
     return NodePredictor {
       internal_sequence: iseq,
       sequence: seq,
-      is_solved: false,
       node_js_major_version,
       conc_state_0: 0,
       conc_state_1: 0,
+      num_predictions_made: Arc::new(Mutex::new(len)),
+      is_solved: false,
     };
   }
 
   #[allow(dead_code)]
   pub fn sequence(&self) -> &[f64] {
     return &self.sequence;
+  }
+
+  // So consumers don't have to import the Predictor trait as well as the struct.
+  pub fn predict_next(&mut self) -> Result<f64, Box<dyn Error>> {
+    return <Self as Predictor>::predict_next(self);
   }
 
   fn xor_shift_128_plus_concrete(&mut self) -> u64 {
@@ -58,6 +73,30 @@ impl NodePredictor {
       return (value >> 11) as f64 / (1u64 << 53) as f64;
     }
     return f64::from_bits((value >> 12) | 0x3FF0000000000000) - 1.0;
+  }
+
+  // If our count is below the max, we can increment, otherwise error.
+  fn increment_prediction_count(&self) -> Result<(), PredictionLimitError> {
+    let mut c = self.num_predictions_made.lock()?;
+    if *c >= Self::MAX_NUM_PREDICTIONS {
+      return Err(PredictionLimitError);
+    }
+    *c += 1;
+    return Ok(());
+  }
+
+  #[allow(dead_code)]
+  fn reset(&mut self, new_sequence: Vec<f64>) -> Result<(), PredictionLimitError> {
+    let mut c = self.num_predictions_made.lock()?;
+    if *c < Self::MAX_NUM_PREDICTIONS {
+      return Ok(());
+    }
+    *c = new_sequence.len() as u8;
+    self.is_solved = false;
+    self.internal_sequence = new_sequence.to_vec();
+    self.sequence = new_sequence.to_vec();
+    self.internal_sequence.reverse();
+    return Ok(());
   }
 
   fn solve_symbolic_state(&mut self) -> Result<(), InitError> {
@@ -157,10 +196,145 @@ impl NodePredictor {
 
 #[cfg(test)]
 mod tests {
-  mod node_v22 {
+  mod general {
+    use crate::{NodePredictor, errors::PredictionLimitError};
     use std::error::Error;
 
-    use crate::Predictor;
+    #[test]
+    fn reset_after_exhaustion() -> Result<(), Box<dyn Error>> {
+      let seq_first = vec![
+        0.777225464783239,
+        0.15637962909874392,
+        0.61479550021439,
+        0.613383431187081,
+      ];
+
+      let exp_first = vec![
+        0.13780690875659396,
+        0.9982326337150321,
+        0.004547103255256535,
+        0.14287124304719512,
+        0.07193734860746803,
+        0.41988043371402806,
+        0.2197922772380051,
+        0.3919840116873258,
+        0.872346223942074,
+        0.8706850288116219,
+        0.15113105207209843,
+        0.6388396452515654,
+        0.49440586365264294,
+        0.6587982725994921,
+        0.18400263468494316,
+        0.662415645160952,
+        0.004233542647695265,
+        0.7850940676778024,
+        0.8718140231245509,
+        0.6789540919039344,
+        0.3903186400622056,
+        0.5518644169835116,
+        0.5827729085540138,
+        0.5554012760270357,
+        0.5233538890694638,
+        0.9581085436854987,
+        0.49105573307668293,
+        0.4887541485622109,
+        0.03580260719438155,
+        0.7486864084447863,
+        0.9442814920321353,
+        0.279500250517147,
+        0.573892252919875,
+        0.35303563579361574,
+        0.49663075416404756,
+        0.3761838996110659,
+        0.01940835807427621,
+        0.048560429750311496,
+        0.12478054659752413,
+        0.8748800514290499,
+        0.5585005650941148,
+        0.861530489078495,
+        0.5288744964943755,
+        0.6986980332092166,
+        0.25771635223672984,
+        0.9727178859177362,
+        0.6867934573316927,
+        0.6970474592601525,
+        0.8035245910646631,
+        0.34589316291057026,
+        0.16026446047340037,
+        0.1871389590142859,
+        0.5065543089345518,
+        0.13565177330674527,
+        0.8171462352178724,
+        0.9132684591493374,
+        0.3537461024035218,
+        0.10449476983306794,
+        0.8400598276661568,
+        0.6256282841337143,
+        0.19469967920827957,
+      ];
+
+      let seq_second = vec![
+        0.1155167115902066,
+        0.2738831377473743,
+        0.475867049008157,
+        0.24131310081058077,
+      ];
+
+      let exp_second = vec![
+        0.5567280997370845,
+        0.09262950949369997,
+        0.9774839147267224,
+        0.07372009723227202,
+        0.8903569034540151,
+        0.2559913027687497,
+        0.9357996349973149,
+        0.10659667352144908,
+        0.34537275726933636,
+        0.23697119929732424,
+        0.1411756579261214,
+        0.4397982843668222,
+        0.9628074927171562,
+        0.15509374502364615,
+      ];
+
+      let seq_first_len = seq_first.len();
+
+      let mut np = NodePredictor::new(crate::NodeJsMajorVersion::V24, seq_first);
+
+      let mut first_predictions = vec![];
+
+      for _ in 0..exp_first.len() {
+        match np.predict_next() {
+          Ok(prediction) => {
+            first_predictions.push(prediction);
+          }
+          Err(e) => {
+            if let Some(_pred_limit_err) = e.downcast_ref::<PredictionLimitError>() {
+              np.reset(seq_second)?;
+              break;
+            } else {
+              return Err(e);
+            }
+          }
+        }
+      }
+
+      assert_eq!(first_predictions.len() + seq_first_len, 64);
+
+      let mut second_preds = vec![];
+      for _ in 0..exp_second.len() {
+        let pred = np.predict_next()?;
+        second_preds.push(pred);
+      }
+
+      assert_eq!(second_preds, exp_second);
+      return Ok(());
+    }
+  }
+
+  mod node_v22 {
+    use crate::NodePredictor;
+    use std::error::Error;
 
     #[test]
     fn correctly_predicts_sequence() -> Result<(), Box<dyn Error>> {
@@ -179,8 +353,7 @@ mod tests {
         0.42618019812863417,
       ];
 
-      let mut v8p_node_v22 =
-        crate::NodePredictor::new(crate::NodeJsMajorVersion::V22, node_v22_seq);
+      let mut v8p_node_v22 = NodePredictor::new(crate::NodeJsMajorVersion::V22, node_v22_seq);
 
       let mut v8_node_v22_predictions = vec![];
       for _ in 0..node_v22_expected.len() {
@@ -195,8 +368,6 @@ mod tests {
 
   mod node_v24 {
     use std::error::Error;
-
-    use crate::Predictor;
 
     #[test]
     fn correctly_predicts_sequence() -> Result<(), Box<dyn Error>> {

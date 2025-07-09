@@ -1,4 +1,5 @@
 use crate::{Predictor, errors::InitError};
+use std::error::Error;
 use z3::{self, Config, Context, SatResult, Solver, ast::*};
 
 pub struct SafariPredictor {
@@ -9,7 +10,7 @@ pub struct SafariPredictor {
 }
 
 impl Predictor for SafariPredictor {
-  fn predict_next(&mut self) -> Result<f64, InitError> {
+  fn predict_next(&mut self) -> Result<f64, Box<dyn Error>> {
     self.solve_symbolic_state()?; // if solving fails, error is returned early
     let v = self.xor_shift_128_plus_concrete();
     return Ok(self.to_double(v));
@@ -32,6 +33,11 @@ impl SafariPredictor {
   #[allow(dead_code)]
   pub fn sequence(&self) -> &[f64] {
     return &self.sequence;
+  }
+
+  // So consumers don't have to import the Predictor trait as well as the struct.
+  pub fn predict_next(&mut self) -> Result<f64, Box<dyn Error>> {
+    return <Self as Predictor>::predict_next(self);
   }
 
   fn xor_shift_128_plus_concrete(&mut self) -> u64 {
@@ -122,8 +128,6 @@ impl SafariPredictor {
 #[cfg(test)]
 mod tests {
   use std::error::Error;
-
-  use crate::Predictor;
 
   #[test]
   fn correctly_predicts_sequence() -> Result<(), Box<dyn Error>> {

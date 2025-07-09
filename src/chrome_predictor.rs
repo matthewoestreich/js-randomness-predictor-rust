@@ -1,4 +1,5 @@
 use crate::{Predictor, errors::InitError};
+use std::error::Error;
 use z3::{self, Config, Context, SatResult, Solver, ast::*};
 
 pub struct ChromePredictor {
@@ -10,7 +11,7 @@ pub struct ChromePredictor {
 }
 
 impl Predictor for ChromePredictor {
-  fn predict_next(&mut self) -> Result<f64, InitError> {
+  fn predict_next(&mut self) -> Result<f64, Box<dyn Error>> {
     self.solve_symbolic_state()?; // if solving fails, error is returned early
     let v = self.xor_shift_128_plus_concrete();
     return Ok(self.to_double(v));
@@ -37,6 +38,11 @@ impl ChromePredictor {
   #[allow(dead_code)]
   pub fn sequence(&self) -> &[f64] {
     return &self.sequence;
+  }
+
+  // So consumers don't have to import the Predictor trait as well as the struct.
+  pub fn predict_next(&mut self) -> Result<f64, Box<dyn Error>> {
+    return <Self as Predictor>::predict_next(self);
   }
 
   // Performs XORShift in reverse.
@@ -134,7 +140,6 @@ impl ChromePredictor {
 mod tests {
   use std::error::Error;
 
-  use crate::Predictor;
   #[test]
   fn correctly_predicts_sequence() -> Result<(), Box<dyn Error>> {
     let sequence = vec![
