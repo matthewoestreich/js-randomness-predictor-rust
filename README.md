@@ -72,9 +72,9 @@ node -p "process.versions.node.split('.')[0]"
 Once you have your `Node.js` `major` version: (which we are using `24` as an example):
 
 ```rust
-use jsrp::NodePredictor;
+use jsrp::{NodePredictor, NodeJsMajorVersion};
 let mut n_v24_p = NodePredictor::new(
-    24, // <- Node.js major version 
+    NodeJsMajorVersion::V24,
     vec![/*
     4 random numbers copied from
     using Math.random in the specific
@@ -96,7 +96,7 @@ Just specify "that" version:
 ```rust
 use jsrp::NodePredictor;
 let mut n_vX_p = NodePredictor::new(
-    some_nodejs_major_version,
+    that_nodejs_major_version,
     vec![/*
     4 random numbers copied from
     using Math.random in the specific
@@ -125,11 +125,9 @@ let next = sp.predict_next();
 
 # CLI
 
-Use `jsrp --help` to get a full list of commands/arguments (as well as their shorthand equivalent).
-
-Each number within `--sequence` should be separated by a space.
-
-By default we provide 10 predictions (if `--predictions` was not provided).
+- Use `jsrp --help` to get a full list of commands/arguments (as well as their shorthand equivalent).
+- Each number within `--sequence` should be separated by a space.
+- By default we provide 10 predictions (if `--predictions` was not provided).
 
 ```bash
 # Node - make 12 predictions
@@ -146,4 +144,13 @@ jsrp firefox -s ... -p N
 jsrp chrome -s ... -p N
 # Safari
 jsrp safari -s ... -p N
+```
+
+**Export Results to JSON**
+
+```bash
+# You can add `--export` (`-e` for short) to any command,
+# which will export the results to .json.
+# The file path MUST end in .json!!!
+jsrp <environment> -s ... -e ./some/path/results.json
 ```

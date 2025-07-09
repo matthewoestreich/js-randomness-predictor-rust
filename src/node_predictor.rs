@@ -1,11 +1,11 @@
-use crate::errors::InitError;
-use z3::{self, Config, Context, SatResult, Solver, ast::*};
+use crate::{NodeJsMajorVersion, errors::InitError};
+use z3::{Config, Context, SatResult, Solver, ast::*};
 
 pub struct NodePredictor {
   sequence: Vec<f64>,
   internal_sequence: Vec<f64>,
   is_solved: bool,
-  node_js_major_version: i32,
+  node_js_major_version: NodeJsMajorVersion,
   conc_state_0: u64,
   conc_state_1: u64,
 }
@@ -14,7 +14,7 @@ impl NodePredictor {
   const SS_0_STR: &str = "sym_state_0";
   const SS_1_STR: &str = "sym_state_1";
 
-  pub fn new(node_js_major_version: i32, seq: Vec<f64>) -> Self {
+  pub fn new(node_js_major_version: NodeJsMajorVersion, seq: Vec<f64>) -> Self {
     let mut iseq = seq.clone();
     iseq.reverse();
 
@@ -52,7 +52,7 @@ impl NodePredictor {
   }
 
   fn to_double(&self, value: u64) -> f64 {
-    if self.node_js_major_version >= 24 {
+    if self.node_js_major_version as i32 >= 24 {
       return (value >> 11) as f64 / (1u64 << 53) as f64;
     }
     return f64::from_bits((value >> 12) | 0x3FF0000000000000) - 1.0;
@@ -128,12 +128,12 @@ impl NodePredictor {
   // Static 'helper' method
   fn constrain_mantissa(
     value: f64,
-    nodejs_version: i32,
+    nodejs_version: NodeJsMajorVersion,
     context: &Context,
     solver: &Solver,
     state_0: &BV,
   ) {
-    if nodejs_version >= 24 {
+    if nodejs_version.clone() as i32 >= 24 {
       // Recover mantissa
       let mantissa = (value * (1u64 << 53) as f64) as u64;
       // Add mantissa constraint
@@ -175,7 +175,8 @@ mod tests {
         0.42618019812863417,
       ];
 
-      let mut v8p_node_v22 = crate::NodePredictor::new(22, node_v22_seq);
+      let mut v8p_node_v22 =
+        crate::NodePredictor::new(crate::NodeJsMajorVersion::V22, node_v22_seq);
 
       let mut v8_node_v22_predictions = vec![];
       for _ in 0..node_v22_expected.len() {
@@ -209,7 +210,8 @@ mod tests {
         0.9348208735728415,
       ];
 
-      let mut v8p_node_v24 = crate::NodePredictor::new(24, node_v24_seq);
+      let mut v8p_node_v24 =
+        crate::NodePredictor::new(crate::NodeJsMajorVersion::V24, node_v24_seq);
 
       let mut v8_node_v24_predictions = vec![];
       for _ in 0..node_v24_expected.len() {
