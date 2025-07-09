@@ -52,7 +52,7 @@ impl NodePredictor {
   }
 
   fn to_double(&self, value: u64) -> f64 {
-    if self.node_js_major_version as i32 >= 24 {
+    if self.node_js_major_version as u8 >= 24 {
       return (value >> 11) as f64 / (1u64 << 53) as f64;
     }
     return f64::from_bits((value >> 12) | 0x3FF0000000000000) - 1.0;
@@ -133,7 +133,7 @@ impl NodePredictor {
     solver: &Solver,
     state_0: &BV,
   ) {
-    if nodejs_version.clone() as i32 >= 24 {
+    if nodejs_version as u8 >= 24 {
       // Recover mantissa
       let mantissa = (value * (1u64 << 53) as f64) as u64;
       // Add mantissa constraint

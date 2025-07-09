@@ -105,7 +105,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         pred_res.predictions.push(pred);
       }
       let formatted = format!("{}", to_string_pretty(&pred_res)?);
-      println!("{}", formatted);
+      println!("{formatted}");
       if let Some(exportp) = export {
         fs::write(exportp.path, formatted)?;
       }
@@ -123,7 +123,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         pred_res.predictions.push(pred);
       }
       let formatted = format!("{}", to_string_pretty(&pred_res)?);
-      println!("{}", formatted);
+      println!("{formatted}");
       if let Some(export) = args.export {
         fs::write(export.path, formatted)?;
       }
@@ -141,7 +141,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         pred_res.predictions.push(pred);
       }
       let formatted = format!("{}", to_string_pretty(&pred_res)?);
-      println!("{}", formatted);
+      println!("{formatted}");
       if let Some(export) = args.export {
         fs::write(export.path, formatted)?;
       }
@@ -159,7 +159,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         pred_res.predictions.push(pred);
       }
       let formatted = format!("{}", to_string_pretty(&pred_res)?);
-      println!("{}", formatted);
+      println!("{formatted}");
       if let Some(export) = args.export {
         fs::write(export.path, formatted)?;
       }
