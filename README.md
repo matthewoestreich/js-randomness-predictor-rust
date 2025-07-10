@@ -14,9 +14,10 @@
 
 # Important
 
-- [Please see here for a list of known issues!](#known-issues)
-- We recommend you provide at least 4 random numbers in the initial sequence
 - You must use the matching predictor for the environment! **Meaning, if random numbers were generatedin Firefox, you must use the Firefox predictor, etc..**
+- You must generate the initial sequence, as well as expected results, **from within the same context**. [Please see here for a more detailed explanation](#generation-context)
+- We recommend you provide at least 4 random numbers in the initial sequence
+- [Please see here for a list of known issues!](#known-issues)
 
 # Installation
 
@@ -70,20 +71,21 @@ let next = chrp.predict_next()?;
 
 [See here for known Node issues](#node)
 
-You **must** provide a `Node.js` version (just the `major` version) when calling `new`! 
-
-You can get your current `Node.js` version by running the following command in your terminal:
+- You **must** provide a `Node.js` version (just the `major` version) when calling `new`! 
 
 ```bash
+# You can get your current `Node.js` version 
+# by running the following command in your 
+# terminal:
 node -p "process.versions.node.split('.')[0]"
-# 24
+#-> 24
 ```
 
 Once you have your `Node.js` `major` version: (which we are using `24` as an example):
 
 ```rust
 use jsrp::{NodePredictor, NodeJsMajorVersion};
-let mut n_v24_p = NodePredictor::new(
+let mut np_v24 = NodePredictor::new(
     NodeJsMajorVersion::V24,
     vec![/*
     4 random numbers copied from
@@ -92,7 +94,7 @@ let mut n_v24_p = NodePredictor::new(
     */],
 );
 
-let next = n_v24_p.predict_next()?;
+let next = np_v24.predict_next()?;
 // Run another Math.random() in
 // Node.js to validate `next`.
 ```
@@ -105,7 +107,7 @@ Just specify "that" version:
 
 ```rust
 use jsrp::NodePredictor;
-let mut n_vX_p = NodePredictor::new(
+let mut np_vX = NodePredictor::new(
     that_nodejs_major_version,
     vec![/*
     4 random numbers copied from
@@ -114,7 +116,7 @@ let mut n_vX_p = NodePredictor::new(
     */],
 );
 
-let next = n_vX_p.predict_next()?;
+let next = np_vX.predict_next()?;
 // Run another Math.random() in
 // Node.js to validate `next`.
 ```
@@ -136,8 +138,11 @@ let next = sp.predict_next()?;
 # CLI
 
 - Use `jsrp --help` to get a full list of commands/arguments (as well as their shorthand equivalent).
+- Use `jsrp <environment> --help` to get a full list of commands/arguments for a specific environment.
 - Each number within `--sequence` should be separated by a space.
 - By default we provide 10 predictions (if `--predictions` was not provided).
+- You can export results to JSON (more info below).
+- You can provide expected results so that we can automatically validate our predictions (more info below).
 
 ```bash
 # Node - make 12 predictions
@@ -150,10 +155,44 @@ jsrp node -s 0.1 0.2 0.3 -m v24 -p 12
 
 # Firefox
 jsrp firefox -s ... -p N
+
 # Chrome
 jsrp chrome -s ... -p N
+
 # Safari
 jsrp safari -s ... -p N
+```
+
+**Validate Expected Results**
+
+If you already have the expected sequence, you can provide it via the `--expected`, or `-x`, flag.  If provided, we will automatically validate our predictions.
+
+```bash
+# This actually works! Try it in the CLI
+jsrp node\
+  --major-version v24\
+  --sequence 0.15825075235897956\
+     0.6837830031246955\
+     0.2352848927050296\
+     0.6995244175841968\
+  --expected 0.32903013894382993
+
+# {
+#   "environment": "Node.js v24",
+#   "expected": [
+#     0.32903013894382993
+#   ],
+#   "is_accurate": true,
+#   "predictions": [
+#     0.32903013894382993
+#   ],
+#   "sequence": [
+#     0.15825075235897956,
+#     0.6837830031246955,
+#     0.2352848927050296,
+#     0.6995244175841968
+#   ]
+# }
 ```
 
 **Export Results to JSON**
@@ -168,6 +207,12 @@ jsrp <environment> -s ... -e ./some/path/results.json
 ---
 
 # Known Issues
+
+### Generation Context
+
+- You can't generate the initial sequence from the console in "browser tab A", and then generate the expected results from the console in a different browser tab. **Both the sequence and expected numbers should have bbeen generated in "browser tab A"**
+- If you do `node -p "Array.from({ length: 4 }, Math.random)"` to generate the initial sequence, **you will have no way of verifying our predictions**. Instead, **you would need to enter the Node REPL *(because all generated random numbers would be from the same context)***
+  - eg enter `$ node` from terminal, and then once in REPL `> Array.from({ length: 4 }, Math.random)` for initial sequence and `> Array.from({ length: 10 }, Math.random)` for expected results.
 
 ## Node
 

@@ -4,8 +4,8 @@
 mod cmd_line_parser;
 mod jsrp_lib;
 
-use cmd_line_parser::*;
 use clap::Parser;
+use cmd_line_parser::*;
 use js_randomness_predictor::*;
 use jsrp_lib::*;
 use std::error::Error;
@@ -29,6 +29,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         "Firefox".to_string(),
         args.sequence,
         args.predictions,
+        args.expected,
         args.export,
       );
     }
@@ -43,6 +44,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         "Chrome".to_string(),
         args.sequence,
         args.predictions,
+        args.expected,
         args.export,
       );
     }
@@ -57,6 +59,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         "Safari".to_string(),
         args.sequence,
         args.predictions,
+        args.expected,
         args.export,
       );
     }

@@ -1,7 +1,6 @@
 use crate::jsrp_lib::*;
 use clap::{Args, Parser, Subcommand};
 use js_randomness_predictor::*;
-use serde::Serialize;
 use std::path::PathBuf;
 
 #[derive(Parser, Debug)]
@@ -31,8 +30,18 @@ pub struct SharedArgs {
   pub sequence: Vec<f64>,
 
   /// Number of predictions to make
-  #[arg(short, long, required = false, default_value_t = 10)]
+  #[arg(
+    short,
+    long,
+    required = false,
+    default_value_t = 10,
+    group = "preds_or_expected"
+  )]
   pub predictions: usize,
+
+  /// Expected prediction values
+  #[arg(short = 'x', long, required = false, value_parser = parse_strict_float, num_args = 1.., group = "preds_or_expected")]
+  pub expected: Option<Vec<f64>>,
 
   /// Path to export results to. Must be a '.json' file!
   #[arg(short, long, required = false, value_parser = parse_export_path)]
@@ -52,11 +61,4 @@ pub struct NodeArgs {
 #[allow(dead_code)]
 pub struct ExportPath {
   pub path: PathBuf,
-}
-
-#[derive(Serialize)]
-pub struct PredictionResult<'a> {
-  pub environment: &'a str,
-  pub sequence: Vec<f64>,
-  pub predictions: Vec<f64>,
 }

@@ -1,16 +1,31 @@
 use crate::cmd_line_parser::*;
 use js_randomness_predictor::*;
-use serde_json::to_string_pretty;
+use serde::Serialize;
+use serde_json::{to_string_pretty, to_value};
 use std::{error::Error, fs, path::Path};
+
+#[derive(Serialize)]
+pub struct PredictionResult<'a> {
+  pub environment: &'a str,
+  pub sequence: Vec<f64>,
+  pub predictions: Vec<f64>,
+  pub expected: Vec<f64>,
+  pub is_accurate: bool,
+}
 
 pub fn handle_node(node_args: NodeArgs) -> Result<(), Box<dyn Error>> {
   let SharedArgs {
     mut predictions,
     sequence,
     export,
+    mut expected,
   } = node_args.shared_args;
 
   let seq_len = sequence.len();
+
+  if let Some(ref expected_predictions) = expected {
+    predictions = expected_predictions.len();
+  }
 
   if seq_len >= NodePredictor::MAX_NUM_PREDICTIONS as usize {
     let err_msg = format!(
@@ -25,7 +40,11 @@ pub fn handle_node(node_args: NodeArgs) -> Result<(), Box<dyn Error>> {
   let has_limit_error = (seq_len + predictions) > max_preds_usize;
 
   if has_limit_error {
+    println!("has_limit_error = true");
     predictions = max_preds_usize - seq_len;
+    if let Some(ref mut exp) = expected {
+      exp.truncate(predictions);
+    }
   }
 
   let major_ver = node_args.major_version;
@@ -35,6 +54,7 @@ pub fn handle_node(node_args: NodeArgs) -> Result<(), Box<dyn Error>> {
     format!("Node.js {major_ver}"),
     sequence,
     predictions,
+    expected,
     export,
   );
 
@@ -76,21 +96,50 @@ pub fn run_predictor_and_maybe_export_predictions<P: Predictor>(
   mut predictor: P,
   environment: String,
   sequence: Vec<f64>,
-  predictions: usize,
+  num_of_predictions: usize,
+  expected: Option<Vec<f64>>,
   export_path: Option<ExportPath>,
 ) -> Result<(), Box<dyn Error>> {
   let mut pred_res = PredictionResult {
     environment: &environment,
     sequence,
     predictions: vec![],
+    is_accurate: false,
+    expected: vec![],
   };
 
-  for _ in 0..predictions {
+  let mut total_num_predictions = num_of_predictions;
+
+  if let Some(expected_preds) = expected {
+    pred_res.expected = expected_preds;
+    total_num_predictions = pred_res.expected.len();
+  }
+
+  for _ in 0..total_num_predictions {
     let pred = predictor.predict_next()?;
     pred_res.predictions.push(pred);
   }
 
-  let formatted = to_string_pretty(&pred_res)?;
+  if !pred_res.expected.is_empty() {
+    pred_res.is_accurate = true;
+    for (idx, pred) in pred_res.predictions.iter().enumerate() {
+      if *pred != pred_res.expected[idx] {
+        pred_res.is_accurate = false;
+        break;
+      }
+    }
+  }
+
+  let mut json_pred_res = to_value(&pred_res)?;
+
+  if pred_res.expected.is_empty()
+    && let Some(json) = json_pred_res.as_object_mut()
+  {
+    json.remove("expected");
+    json.remove("is_accurate");
+  }
+
+  let formatted = to_string_pretty(&json_pred_res)?;
   println!("{formatted}");
 
   if let Some(export) = export_path {
