@@ -19,7 +19,7 @@ z3 = "0.12.1"
 
 [[bin]]
 name = "jsrp"
-path = "bin/jsrp.rs"
+path = "bin/main.rs"
 
 [lib]
 name = "js_randomness_predictor"

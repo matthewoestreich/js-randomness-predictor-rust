@@ -26,9 +26,9 @@ impl Predictor for NodePredictor {
 }
 
 impl NodePredictor {
+  pub const MAX_NUM_PREDICTIONS: u8 = 64;
   const SS_0_STR: &str = "sym_state_0";
   const SS_1_STR: &str = "sym_state_1";
-  const MAX_NUM_PREDICTIONS: u8 = 64;
 
   pub fn new(node_js_major_version: NodeJsMajorVersion, seq: Vec<f64>) -> Self {
     let len = seq.len() as u8;
