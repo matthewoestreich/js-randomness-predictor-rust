@@ -108,16 +108,22 @@ pub fn run_predictor_and_maybe_export_predictions<P: Predictor>(
 
   let mut total_num_predictions = num_of_predictions;
 
+  // If user provided expected results, use the length of
+  // them as 'predictions' (aka num of predictions, which is 10 by default).
+  // Since users cannot use --predictions and --expected flags at the same
+  // time, we only need to check for 'expected' flag.
   if let Some(expected_preds) = expected {
     pred_res.expected = expected_preds;
     total_num_predictions = pred_res.expected.len();
   }
 
+  // Make predictions.
   for _ in 0..total_num_predictions {
     let pred = predictor.predict_next()?;
     pred_res.predictions.push(pred);
   }
 
+  // If user provided expected results, validate them.
   if !pred_res.expected.is_empty() {
     pred_res.is_accurate = true;
     for (idx, pred) in pred_res.predictions.iter().enumerate() {
@@ -128,8 +134,11 @@ pub fn run_predictor_and_maybe_export_predictions<P: Predictor>(
     }
   }
 
+  // Converts our struct to a JSON object.
   let mut json_pred_res = to_value(&pred_res)?;
 
+  // If user did not provide expected results, remove
+  // unnecessary fields from our JSON results/report.
   if pred_res.expected.is_empty()
     && let Some(json) = json_pred_res.as_object_mut()
   {
@@ -137,9 +146,11 @@ pub fn run_predictor_and_maybe_export_predictions<P: Predictor>(
     json.remove("is_accurate");
   }
 
+  // Log results to console so user can view them.
   let formatted = to_string_pretty(&json_pred_res)?;
   println!("{formatted}");
 
+  // Export if user specified.
   if let Some(export) = export_path {
     fs::write(export.path, formatted)?;
   }
