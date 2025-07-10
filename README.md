@@ -210,7 +210,7 @@ jsrp <environment> -s ... -e ./some/path/results.json
 
 ### Generation Context
 
-- You can't generate the initial sequence from the console in "browser tab A", and then generate the expected results from the console in a different browser tab. **Both the sequence and expected numbers should have bbeen generated in "browser tab A"**
+- You can't generate the initial sequence from the console in "browser tab A", and then generate the expected results from the console in a different browser tab. **Both the sequence and expected numbers should have been generated in "browser tab A"**
 - If you do `node -p "Array.from({ length: 4 }, Math.random)"` to generate the initial sequence, **you will have no way of verifying our predictions**. Instead, **you would need to enter the Node REPL *(because all generated random numbers would be from the same context)***
   - eg enter `$ node` from terminal, and then once in REPL `> Array.from({ length: 4 }, Math.random)` for initial sequence and `> Array.from({ length: 10 }, Math.random)` for expected results.
 
