@@ -22,12 +22,13 @@ pub fn handle_node(node_args: NodeArgs) -> Result<(), Box<dyn Error>> {
   } = node_args.shared_args;
 
   let seq_len = sequence.len();
+  let max_preds_usize = NodePredictor::MAX_NUM_PREDICTIONS as usize;
 
   if let Some(ref expected_predictions) = expected {
     predictions = expected_predictions.len();
   }
 
-  if seq_len >= NodePredictor::MAX_NUM_PREDICTIONS as usize {
+  if seq_len >= max_preds_usize {
     let err_msg = format!(
       "\x1b[31m[ERROR] Sequence length exceeds limit! Max sequence length is {}!\nSee here for more : https://github.com/matthewoestreich/js-randomness-predictor-rust/blob/master/README.md#random-number-pool-exhaustion\x1b[0m",
       NodePredictor::MAX_NUM_PREDICTIONS - 1
@@ -36,11 +37,8 @@ pub fn handle_node(node_args: NodeArgs) -> Result<(), Box<dyn Error>> {
     return Err(Box::new(errors::PredictionLimitError));
   }
 
-  let max_preds_usize = NodePredictor::MAX_NUM_PREDICTIONS as usize;
   let has_limit_error = (seq_len + predictions) > max_preds_usize;
-
   if has_limit_error {
-    println!("has_limit_error = true");
     predictions = max_preds_usize - seq_len;
     if let Some(ref mut exp) = expected {
       exp.truncate(predictions);
