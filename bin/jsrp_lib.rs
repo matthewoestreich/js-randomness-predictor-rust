@@ -5,8 +5,8 @@ use serde_json::{to_string_pretty, to_value};
 use std::{error::Error, fs, path::Path};
 
 #[derive(Serialize)]
-pub struct PredictionResult<'a> {
-  pub environment: &'a str,
+pub struct PredictionResult {
+  pub environment: String,
   pub sequence: Vec<f64>,
   pub predictions: Vec<f64>,
   pub expected: Vec<f64>,
@@ -31,10 +31,10 @@ pub fn handle_node(node_args: NodeArgs) -> Result<(), Box<dyn Error>> {
   if seq_len >= max_preds_usize {
     let err_msg = format!(
       "\x1b[31m[ERROR] Sequence length exceeds limit! Max sequence length is {}!\nSee here for more : https://github.com/matthewoestreich/js-randomness-predictor-rust/blob/master/README.md#random-number-pool-exhaustion\x1b[0m",
-      NodePredictor::MAX_NUM_PREDICTIONS - 1
+      max_preds_usize - 1
     );
     println!("{err_msg}");
-    return Err(Box::new(errors::PredictionLimitError));
+    return Ok(());
   }
 
   let has_limit_error = (seq_len + predictions) > max_preds_usize;
@@ -47,7 +47,8 @@ pub fn handle_node(node_args: NodeArgs) -> Result<(), Box<dyn Error>> {
 
   let major_ver = node_args.major_version;
   let predictor = NodePredictor::new(major_ver, sequence.clone());
-  let prediction_result = run_predictor_and_maybe_export_predictions(
+
+  let prediction_result = run_predictor(
     predictor,
     format!("Node.js {major_ver}"),
     sequence,
@@ -90,7 +91,7 @@ pub fn parse_export_path(s: &str) -> Result<ExportPath, String> {
   return Err("Invalid export path! Path must be to a .json file!".into());
 }
 
-pub fn run_predictor_and_maybe_export_predictions<P: Predictor>(
+pub fn run_predictor<P: Predictor>(
   mut predictor: P,
   environment: String,
   sequence: Vec<f64>,
@@ -99,7 +100,7 @@ pub fn run_predictor_and_maybe_export_predictions<P: Predictor>(
   export_path: Option<ExportPath>,
 ) -> Result<(), Box<dyn Error>> {
   let mut pred_res = PredictionResult {
-    environment: &environment,
+    environment,
     sequence,
     predictions: vec![],
     is_accurate: false,

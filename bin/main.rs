@@ -23,9 +23,8 @@ fn main() -> Result<(), Box<dyn Error>> {
       Firefox
     */
     Environments::Firefox(args) => {
-      let predictor = FirefoxPredictor::new(args.sequence.clone());
-      return run_predictor_and_maybe_export_predictions(
-        predictor,
+      return run_predictor(
+        FirefoxPredictor::new(args.sequence.clone()),
         "Firefox".to_string(),
         args.sequence,
         args.predictions,
@@ -38,9 +37,8 @@ fn main() -> Result<(), Box<dyn Error>> {
       Chrome
     */
     Environments::Chrome(args) => {
-      let predictor = ChromePredictor::new(args.sequence.clone());
-      return run_predictor_and_maybe_export_predictions(
-        predictor,
+      return run_predictor(
+        ChromePredictor::new(args.sequence.clone()),
         "Chrome".to_string(),
         args.sequence,
         args.predictions,
@@ -53,9 +51,8 @@ fn main() -> Result<(), Box<dyn Error>> {
       Safari
     */
     Environments::Safari(args) => {
-      let predictor = SafariPredictor::new(args.sequence.clone());
-      return run_predictor_and_maybe_export_predictions(
-        predictor,
+      return run_predictor(
+        SafariPredictor::new(args.sequence.clone()),
         "Safari".to_string(),
         args.sequence,
         args.predictions,
